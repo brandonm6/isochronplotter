@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from helpers import *
 
-csvs_dir = os.path.join(os.getcwd(), "csvs")
+csv_dir = os.path.join(os.getcwd(), "csvs")
 
 
 class Isochron:
@@ -73,17 +73,13 @@ class Isochron:
 
         sections = self.cheat_steps()
         for section in sections:
-            df = self.df.iloc[section.start:section.stop]
+            df = self.df.iloc[section.start:section.stop].reset_index(drop=True)
             x, y = lambda df: df["39Ar/40Ar"], lambda df: df["36Ar/40Ar"]
 
-            x_outliers = locate_outliers(x(df))
-            y_outliers = locate_outliers(y(df))
+            outliers = locate_outliers_resid(x(df), y(df))
             if section.has_slope:  # so initial nonhomogeneous scattered data not discarded (ex. Step 1 on P K-feldspar)
-                self.removed_steps += df["Step"].iloc[x_outliers + y_outliers].tolist()
-                df = df.drop((x_outliers + y_outliers)).reset_index(drop=True)
-
-            infl = locate_influential(x(df), y(df))
-            # df = df.drop(check_removal(infl))
+                self.removed_steps += df["Step"].iloc[outliers].tolist()
+                df = df.drop(outliers).reset_index(drop=True)
 
             xs, ys = x(df), y(df)
             ax.scatter(xs, ys)
@@ -107,10 +103,10 @@ class Isochron:
         plt.show()
 
 
-skip = ["P K-feldspar.csv", "Buckskin Peak Biotite.csv"]
-for file in os.listdir(csvs_dir):
+skip = []
+for file in os.listdir(csv_dir):
     if file not in skip:  # for debugging purposes
         print(file[:file.find(".csv")])
-        csv_path = os.path.join(csvs_dir, file)
+        csv_path = os.path.join(csv_dir, file)
         Isochron(csv_path).plot()
         print("\n\n")
