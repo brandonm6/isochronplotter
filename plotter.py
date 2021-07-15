@@ -35,6 +35,7 @@ class Isochron:
         self.df = self.organize()
         self.x_ticks = x_ticks
         self.y_ticks = y_ticks
+        self.removed_steps = []
 
     def cheat_steps(self):
         df = self.df
@@ -77,8 +78,9 @@ class Isochron:
 
             x_outliers = locate_outliers(x(df))
             y_outliers = locate_outliers(y(df))
-            # if section.has_slope:  # so initial nonhomogeneous scattered data not discarded
-            df = df.drop((x_outliers + y_outliers)).reset_index(drop=True)
+            if section.has_slope:  # so initial nonhomogeneous scattered data not discarded (ex. Step 1 on P K-feldspar)
+                self.removed_steps += df["Step"].iloc[x_outliers + y_outliers].tolist()
+                df = df.drop((x_outliers + y_outliers)).reset_index(drop=True)
 
             infl = locate_influential(x(df), y(df))
             # df = df.drop(check_removal(infl))
@@ -112,4 +114,3 @@ for file in os.listdir(csvs_dir):
         csv_path = os.path.join(csvs_dir, file)
         Isochron(csv_path).plot()
         print("\n\n")
-
