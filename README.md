@@ -1,7 +1,7 @@
 # isochron-plotter
 Makes isochron diagrams for argon-argon data
 
-##Minimum CSV columns:
+## Minimum columns in CSV file:
 
 40Ar/39Ar, 36Ar/39Ar, %39Ark, Age, 1SD, [J-value]
 
