@@ -1,10 +1,18 @@
 import os
+
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
+
+from variables import *
 from helpers import *
+from locate_plateaus import find_plateaus
+
+# for debugging
+import sys
+import time
 
 csv_dir = os.path.join(os.getcwd(), "csvs")
-
 
 class Isochron:
     class SectionSteps:
@@ -33,65 +41,49 @@ class Isochron:
         self.j_val = float(self.orig_df.columns[-1])
         self.name = csv[csv.rfind("/") + 1:csv.find(".csv")]
         self.df = self.organize()
-        self.x_ticks = x_ticks
-        self.y_ticks = y_ticks
         self.removed_steps = []
 
-    def cheat_steps(self):
-        df = self.df
-        if self.name == "P K-feldspar":
-            df_1 = Isochron.SectionSteps(df, 1, 10, False)
-            df_2 = Isochron.SectionSteps(df, 11, 18, True)
-            separated = [df_1, df_2]
-        elif self.name == "B K-feldspar":
-            df_1 = Isochron.SectionSteps(df, 1, 10, True)  # 2, 10
-            df_2 = Isochron.SectionSteps(df, 11, 18, True)
-            separated = [df_1, df_2]
-        else:
-            if self.name == "Buckskin Peak Biotite":
-                self.x_ticks = np.arange(0.053, .062, step=.001)
-                self.y_ticks = np.arange(0, .00012, step=.00002)
-            df_1 = Isochron.SectionSteps(df, has_slope=False, every=True)
-            separated = [df_1]
-        return separated
+        self.x_ticks = x_ticks
+        self.y_ticks = y_ticks
 
     def organize(self):
         self.orig_df["Step"] = np.arange(len(self.orig_df)) + 1
         self.orig_df["39Ar/40Ar"] = 1 / self.orig_df["40Ar/39Ar"]
         self.orig_df["36Ar/40Ar"] = self.orig_df["36Ar/39Ar"] / self.orig_df["40Ar/39Ar"]
         self.orig_df["36Ar/40Ar"] = self.orig_df["36Ar/39Ar"] / self.orig_df["40Ar/39Ar"]
-        new_df = self.orig_df[["Step", "36Ar/40Ar", "39Ar/40Ar", "%39Ark", "Age", "1SD"]]
+        new_df = self.orig_df[["Step", "36Ar/40Ar", "39Ar/40Ar", "36Ar/39Ar", "%39Ark", "1SD"]]
 
         return new_df
 
     def plot(self):
-        atm_argon = 295.5  # 298.6
-        total_decay_40k = 5.54e-10
 
         plt.plot()
         ax = plt.gca()
 
-        sections = self.cheat_steps()
-        for section in sections:
-            df = self.df.iloc[section.start:section.stop].reset_index(drop=True)
+        # plateaus = find_plateaus(self.df, self.j_val)
+        """
+        add filtering mechanism to choose which plateau is the best for each trapped argon level
+        """
+
+        for subset in subsets:
+
             x, y = lambda df: df["39Ar/40Ar"], lambda df: df["36Ar/40Ar"]
 
-            outliers = locate_outliers_resid(x(df), y(df))
-            if section.has_slope:  # so initial nonhomogeneous scattered data not discarded (ex. Step 1 on P K-feldspar)
-                self.removed_steps += df["Step"].iloc[outliers].tolist()
-                df = df.drop(outliers).reset_index(drop=True)
+            # outliers = locate_outliers_resid(x(df), y(df))
+            # self.removed_steps += df["Step"].iloc[outliers].tolist()
+            # df = df.drop(outliers).reset_index(drop=True)
 
             xs, ys = x(df), y(df)
             ax.scatter(xs, ys)
             for i in df["Step"]:
                 pos = df.index[df["Step"] == i].tolist()[0]
                 plt.annotate(i, (xs[pos], ys[pos]), horizontalalignment="center")
-            if section.has_slope:
-                [m, b] = np.polyfit(xs, ys, 1)
-                age = (1 / total_decay_40k) * np.log(((1 / (-b / m)) * self.j_val) + 1) / 1000000  # age in Ma
-                plt.plot([0, (-b / m)], [b, 0], label=(
-                        "$^{40}$Ar/$^{36}$Ar = " + str(round(1 / b)) + "\n Age = " + str(round(age, 1)) + " Ma"))
-                plt.legend(loc="upper right")
+
+            [m, b] = np.polyfit(xs, ys, 1)
+            age = (1 / total_decay_40k) * np.log(((1 / (-b / m)) * self.j_val) + 1) / 1000000  # age in Ma
+            plt.plot([0, (-b / m)], [b, 0], label=(
+                    "$^{40}$Ar/$^{36}$Ar = " + str(round(1 / b)) + "\n Age = " + str(round(age, 1)) + " Ma"))
+            plt.legend(loc="upper right")
 
         plt.margins(x=0, y=0)
         plt.title(self.name)
@@ -103,10 +95,22 @@ class Isochron:
         plt.show()
 
 
-skip = []
+
+skip = []  #"P K-feldspar.csv","B K-feldspar.csv", "Buckskin Peak Biotite.csv"
 for file in os.listdir(csv_dir):
     if file not in skip:  # for debugging purposes
+
+        # title = file[:file.find(".csv")]
+        # orig_stdout = sys.stdout
+        # f = open((os.getcwd() + "/outputs/" + title + ".txt"), 'w')
+        # sys.stdout = f
+
         print(file[:file.find(".csv")])
         csv_path = os.path.join(csv_dir, file)
         Isochron(csv_path).plot()
         print("\n\n")
+
+        # sys.stdout = orig_stdout
+        # f.close()
+
+

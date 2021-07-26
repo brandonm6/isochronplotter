@@ -1,8 +1,5 @@
-import numpy as np
-from statsmodels.api import OLS
+import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import OLSInfluence
-from scipy import stats
-# import sklearn.cluster as sc
 
 
 def locate_outliers_resid(x, y):
@@ -16,8 +13,8 @@ def locate_outliers_resid(x, y):
     x = x.to_frame()
     x.insert(loc=0, column="const", value=1.0)
 
-    model = OLS(y, x)
-    stdnt_resid = OLSInfluence(model.fit()).resid_studentized_external
+    model = sm.OLS(y, x).fit()
+    stdnt_resid = OLSInfluence(model).resid_studentized_external
     outliers = stdnt_resid[abs(stdnt_resid) > 3].index.values.tolist()
 
     return outliers
@@ -71,13 +68,3 @@ def locate_outliers_resid(x, y):
 #             remove.append(val)
 #
 #     return remove
-
-
-def identify_nonhomogeneity():
-    """
-    nonhomogeneous trapped argon can be disregarded
-    identify through scatter in initial increments
-    maybe use cluster identification algorithm
-    min requirements for plateau are:
-     - at least 3 steps and 50% cumulative %39Ar
-    """
