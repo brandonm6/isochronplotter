@@ -29,10 +29,18 @@ def build_intervals(df):
     return df
 
 def group_overlaps(df):
+    '''
+    returns groups of STEPS (not indexes) that overlap
+    '''
     # overlap = 1 where there is overlap with the following x
-    df["overlap"] = overlap = np.roll(
-        np.where(check_overlap(df["btm"], df["top"], df["cur btm"], df["cur top"]), 1, 0), -1)
-    index = np.nonzero(overlap)[0]
+    df["overlap"] = np.roll(np.where(check_overlap(df["btm"], df["top"], df["cur btm"], df["cur top"]), 1, 0), -1)
+
+    df.iloc[-1, df.columns.get_loc("overlap")] = 0  # because last step has no following step
+
+    index = np.nonzero(df["overlap"].to_numpy())[0]
+
+    # make function return groups of steps that overlap rather than their indexes
+    index += 1
 
     if not len(index):  # if no overlaps at all (needed b/c grouped.apply fails - try to stop using grouped.apply)
         return index
@@ -78,16 +86,18 @@ def find_plateaus(orig_df, j_val):
         if len(least_three):
             to_check[1 / i] = least_three
 
-    plateaus = {}
+    plateaus = {}  # have three steps and 50% Ar39
     for pot_trap in to_check.keys():
-        indexes = to_check.get(pot_trap)
-        tmp = pd.DataFrame(indexes)
-        last_ind = orig_df["%39Ark"].iloc[tmp.loc[tmp.index, tmp.columns[-1]]].to_numpy()
-        first_ind = orig_df["%39Ark"].iloc[tmp.loc[tmp.index, tmp.columns[0]]].to_numpy()
+        steps = to_check.get(pot_trap)
+        tmp = pd.DataFrame(steps)
+
+        # subtract 1 in .iloc because using steps not indexes (indexes = steps - 1)
+        last_ind = orig_df["%39Ark"].iloc[tmp.loc[tmp.index, tmp.columns[-1]] - 1].to_numpy()
+        first_ind = orig_df["%39Ark"].iloc[tmp.loc[tmp.index, tmp.columns[0]]-1].to_numpy()
         tmp["diff"] = last_ind - first_ind
 
         keep = np.where((tmp["diff"]) > 50)[0]
         if len(keep):
-            plateaus[pot_trap] = indexes[keep]
+            plateaus[pot_trap] = steps[keep]
 
     return plateaus
