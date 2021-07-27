@@ -47,11 +47,11 @@ def group_overlaps(df):
 
     grp = np.split(index, np.where(np.diff(index) != 1)[0] + 1)
     grouped = pd.DataFrame(grp)
-    grouped = grouped.apply(lambda x: sorted(x, key=pd.notnull), 1)
-    grouped = pd.DataFrame.from_dict(dict(zip(grouped.index, grouped.values))).T
-    grouped["next"] = grouped.iloc[:, -1:] + 1
+    mod = grouped.apply(lambda x: sorted(x, key=pd.notnull), 1)
+    mod = pd.DataFrame.from_dict(dict(zip(mod.index, mod.values))).T
+    grouped["next"] = mod.iloc[:, -1:] + 1
 
-    grouped = grouped.to_numpy()
+    grouped = grouped[[grouped.columns[0], "next"]].to_numpy()
 
     return grouped
 
@@ -59,8 +59,12 @@ def check_three(x, err):
     df = build_intervals(pd.concat([x, err], axis=1, keys=["x", "err"]))
     groups = group_overlaps(df)
 
-    ind = pd.DataFrame(groups)
-    least_three = ind.loc[np.where(ind.count(axis=1) >= 3)[0]].to_numpy()
+    try:
+        ind = pd.DataFrame(groups, columns=["first", "last"])
+    except ValueError:
+        return []
+
+    least_three = ind.loc[np.where((ind["last"] - ind["first"] +1) >= 3)[0]].to_numpy()
 
     return least_three
 
@@ -93,11 +97,11 @@ def find_plateaus(orig_df, j_val):
 
         # subtract 1 in .iloc because using steps not indexes (indexes = steps - 1)
         last_ind = orig_df["%39Ark"].iloc[tmp.loc[tmp.index, tmp.columns[-1]] - 1].to_numpy()
-        first_ind = orig_df["%39Ark"].iloc[tmp.loc[tmp.index, tmp.columns[0]]-1].to_numpy()
-        tmp["diff"] = last_ind - first_ind
+        first_ind = orig_df["%39Ark"].iloc[tmp.loc[tmp.index, tmp.columns[0]] - 1].to_numpy()
+        ind = np.where(((last_ind - first_ind) > 50))[0]
 
-        keep = np.where((tmp["diff"]) > 50)[0]
+        keep = list(tmp.iloc[ind, :].itertuples(index=False, name=None))
         if len(keep):
-            plateaus[pot_trap] = steps[keep]
+            plateaus[pot_trap] = keep
 
     return plateaus
