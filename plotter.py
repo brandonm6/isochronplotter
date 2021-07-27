@@ -3,6 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import itertools
 
 from variables import *
 from helpers import *
@@ -35,7 +36,7 @@ class Isochron:
                     pos += sign
             return result
 
-    def __init__(self, csv, x_ticks=np.arange(0, .35, step=.05), y_ticks=np.arange(0, .005, step=0.001)):
+    def __init__(self, csv):
         # x_tics and y_ticks used for cheating purposes
         self.orig_df = pd.read_csv(csv)
         self.j_val = float(self.orig_df.columns[-1])
@@ -43,6 +44,13 @@ class Isochron:
         self.df = self.organize()
         self.removed_steps = []
 
+        # for cheating purposes
+        if self.name=="Buckskin Peak Biotite":
+            x_ticks = np.arange(0, .09, step=.01)
+            y_ticks = np.arange(0, .001)
+        else:
+            x_ticks = np.arange(0, .35, step=.05)
+            y_ticks = np.arange(0, .005, step=0.001)
         self.x_ticks = x_ticks
         self.y_ticks = y_ticks
 
@@ -55,17 +63,40 @@ class Isochron:
 
         return new_df
 
+    def get_subsets(self, plateaus):
+        subsets = []
+        if len(plateaus):
+            print("\nPlateaus found")
+            for trapped in plateaus.keys():
+                print("\n%s: %s" % (trapped, plateaus.get(trapped)))
+            condensed = list(set(itertools.chain.from_iterable(plateaus.values())))
+            for section in condensed:
+                start = section[0]
+                stop = section[1]
+                plateau = Isochron.SectionSteps(self.df, start, stop, True)
+                subsets.append(plateau)
+
+        else:
+            print("\nNo plateaus found.")
+            all_steps = Isochron.SectionSteps(self.df, every=True)
+            subsets.append(all_steps)
+
+        return subsets
+
     def plot(self):
 
         plt.plot()
         ax = plt.gca()
 
-        # plateaus = find_plateaus(self.df, self.j_val)
-        """
-        add filtering mechanism to choose which plateau is the best for each trapped argon level
-        """
+        t0 = time.time()
+        plateaus = find_plateaus(self.df, self.j_val)
+        tf = time.time()
+
+        subsets = self.get_subsets(plateaus)
+        print("plateau finder time:", tf-t0)
 
         for subset in subsets:
+            df = self.df.iloc[subset.start:subset.stop].reset_index(drop=True)
 
             x, y = lambda df: df["39Ar/40Ar"], lambda df: df["36Ar/40Ar"]
 
@@ -95,22 +126,24 @@ class Isochron:
         plt.show()
 
 
+if not os.path.exists("outputs"):
+    os.makedirs("outputs")
 
 skip = []  #"P K-feldspar.csv","B K-feldspar.csv", "Buckskin Peak Biotite.csv"
 for file in os.listdir(csv_dir):
     if file not in skip:  # for debugging purposes
 
-        # title = file[:file.find(".csv")]
-        # orig_stdout = sys.stdout
-        # f = open((os.getcwd() + "/outputs/" + title + ".txt"), 'w')
-        # sys.stdout = f
+        title = file[:file.find(".csv")]
+        orig_stdout = sys.stdout
+        f = open((os.getcwd() + "/outputs/" + title + ".txt"), 'w')
+        sys.stdout = f
 
         print(file[:file.find(".csv")])
         csv_path = os.path.join(csv_dir, file)
         Isochron(csv_path).plot()
         print("\n\n")
 
-        # sys.stdout = orig_stdout
-        # f.close()
+        sys.stdout = orig_stdout
+        f.close()
 
 

@@ -1,2 +1,9 @@
 .idea/
 __pycache__
+
+
+outputs/
+.ipynb_checkpoints/
+*.ipynb
+
+old/
