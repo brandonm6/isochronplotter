@@ -3,7 +3,5 @@ __pycache__
 
 
 outputs/
-.ipynb_checkpoints/
-*.ipynb
-
+notebooks/
 old/

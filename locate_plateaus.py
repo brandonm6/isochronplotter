@@ -90,6 +90,10 @@ def find_plateaus(orig_df, j_val):
         if len(least_three):
             to_check[1 / i] = least_three
 
+    print("\nAt least three steps:")
+    for trapped in to_check.keys():
+        print("%s: %s" % (trapped, to_check.get(trapped)))
+
     plateaus = {}  # have three steps and 50% Ar39
     for pot_trap in to_check.keys():
         steps = to_check.get(pot_trap)

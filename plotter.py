@@ -6,7 +6,6 @@ import numpy as np
 import itertools
 
 from variables import *
-from helpers import *
 from locate_plateaus import find_plateaus
 
 # for debugging
@@ -14,6 +13,7 @@ import sys
 import time
 
 csv_dir = os.path.join(os.getcwd(), "csvs")
+
 
 class Isochron:
     class SectionSteps:
@@ -36,18 +36,18 @@ class Isochron:
                     pos += sign
             return result
 
-    def __init__(self, csv):
-        # x_tics and y_ticks used for cheating purposes
+    def __init__(self, csv, verbose=True):
         self.orig_df = pd.read_csv(csv)
         self.j_val = float(self.orig_df.columns[-1])
         self.name = csv[csv.rfind("/") + 1:csv.find(".csv")]
         self.df = self.organize()
+        self.verbose = verbose
         self.removed_steps = []
 
         # for cheating purposes
-        if self.name=="Buckskin Peak Biotite":
+        if self.name == "Buckskin Peak Biotite":
             x_ticks = np.arange(0, .09, step=.01)
-            y_ticks = np.arange(0, .001)
+            y_ticks = np.arange(0, .005, step=0.001)
         else:
             x_ticks = np.arange(0, .35, step=.05)
             y_ticks = np.arange(0, .005, step=0.001)
@@ -58,7 +58,6 @@ class Isochron:
         self.orig_df["Step"] = np.arange(len(self.orig_df)) + 1
         self.orig_df["39Ar/40Ar"] = 1 / self.orig_df["40Ar/39Ar"]
         self.orig_df["36Ar/40Ar"] = self.orig_df["36Ar/39Ar"] / self.orig_df["40Ar/39Ar"]
-        self.orig_df["36Ar/40Ar"] = self.orig_df["36Ar/39Ar"] / self.orig_df["40Ar/39Ar"]
         new_df = self.orig_df[["Step", "36Ar/40Ar", "39Ar/40Ar", "36Ar/39Ar", "%39Ark", "1SD"]]
 
         return new_df
@@ -66,9 +65,10 @@ class Isochron:
     def get_subsets(self, plateaus):
         subsets = []
         if len(plateaus):
-            print("\nPlateaus found")
-            for trapped in plateaus.keys():
-                print("\n%s: %s" % (trapped, plateaus.get(trapped)))
+            if self.verbose:
+                print("\nPlateaus:")
+                for trapped in plateaus.keys():
+                    print("%s: %s" % (trapped, plateaus.get(trapped)))
             condensed = list(set(itertools.chain.from_iterable(plateaus.values())))
             for section in condensed:
                 start = section[0]
@@ -77,7 +77,8 @@ class Isochron:
                 subsets.append(plateau)
 
         else:
-            print("\nNo plateaus found.")
+            if self.verbose:
+                print("\nNo plateaus found.")
             all_steps = Isochron.SectionSteps(self.df, every=True)
             subsets.append(all_steps)
 
@@ -93,18 +94,12 @@ class Isochron:
         tf = time.time()
 
         subsets = self.get_subsets(plateaus)
-        print("plateau finder time:", tf-t0)
+        print("plateau finding time:", tf - t0)
 
         for subset in subsets:
             df = self.df.iloc[subset.start:subset.stop].reset_index(drop=True)
 
-            x, y = lambda df: df["39Ar/40Ar"], lambda df: df["36Ar/40Ar"]
-
-            # outliers = locate_outliers_resid(x(df), y(df))
-            # self.removed_steps += df["Step"].iloc[outliers].tolist()
-            # df = df.drop(outliers).reset_index(drop=True)
-
-            xs, ys = x(df), y(df)
+            xs, ys = df["39Ar/40Ar"], df["36Ar/40Ar"]
             ax.scatter(xs, ys)
             for i in df["Step"]:
                 pos = df.index[df["Step"] == i].tolist()[0]
@@ -129,7 +124,7 @@ class Isochron:
 if not os.path.exists("outputs"):
     os.makedirs("outputs")
 
-skip = []  #"P K-feldspar.csv","B K-feldspar.csv", "Buckskin Peak Biotite.csv"
+skip = []
 for file in os.listdir(csv_dir):
     if file not in skip:  # for debugging purposes
 
@@ -145,5 +140,3 @@ for file in os.listdir(csv_dir):
 
         sys.stdout = orig_stdout
         f.close()
-
-
