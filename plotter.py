@@ -1,142 +1,143 @@
-import os
-
 import matplotlib.pyplot as plt
-import pandas as pd
+from matplotlib.patches import Ellipse
 import numpy as np
 import itertools
 
 from variables import *
-from locate_plateaus import find_plateaus
-
-# for debugging
-import sys
-import time
-
-csv_dir = os.path.join(os.getcwd(), "csvs")
+from builddataframe import BuildDataframe
+from locateplateaus import LocatePlateaus
+from mahon import Mahon
 
 
-class Isochron:
-    class SectionSteps:
-        def __init__(self, df, start=None, stop=None, has_slope=False, every=None):
-            self.df = df
-            if every:
-                self.start = 0
-                self.stop = None
-            else:
-                self.start = self.try_steps(start, 1)
-                self.stop = self.try_steps(stop, -1) + 1
-            self.has_slope = has_slope
+def set_size(w, h, ax):
+    """ w, h: width, height in inches """
+    left = ax.figure.subplotpars.left
+    right = ax.figure.subplotpars.right
+    top = ax.figure.subplotpars.top
+    btm = ax.figure.subplotpars.bottom
+    figw = float(w) / (right - left)
+    figh = float(h) / (top - btm)
+    ax.figure.set_size_inches(figw, figh)
 
-        def try_steps(self, pos, sign):
-            result = None
-            while result is None:
-                try:
-                    result = self.df.index[self.df["Step"] == pos].tolist()[0]
-                except IndexError:
-                    pos += sign
-            return result
 
-    def __init__(self, csv, verbose=True):
-        self.orig_df = pd.read_csv(csv)
-        self.j_val = float(self.orig_df.columns[-1])
-        self.name = csv[csv.rfind("/") + 1:csv.find(".csv")]
-        self.df = self.organize()
+def get_aspect(ax):
+    ylower, yupper = ax.get_ylim()
+    xlower, xupper = ax.get_xlim()
+    data_ratio = (yupper - ylower) / (xupper - xlower)
+
+    # total figure size
+    fig_w, fig_h = ax.get_figure().get_size_inches()
+    # axis size on figure
+    _, _, w, h = ax.get_position().bounds
+    disp_ratio = (fig_h * h) / (fig_w * w)
+
+    return data_ratio / disp_ratio
+
+
+def step2index(df, step):
+    return df.index[df['Step'] == step].tolist()[0]
+
+
+class Plotter:
+    def __init__(self, csv_path, remove=None, verbose=True):
+        """
+        csv_path: path to full raw run data file
+        remove: list of letters to remove (removes all  ex. all As, all Bs, etc.)
+        """
+        if remove is None:
+            remove = []
         self.verbose = verbose
-        self.removed_steps = []
+        self.name = csv_path[csv_path.rfind("/") + 1:csv_path.find(".csv")]
+        unpacked = BuildDataframe(csv_path, remove)
+        self.removed = unpacked.removed
+        self.j_val = unpacked.j_val
+        self.step_key = unpacked.step_key
+        self.df = unpacked.main_df
+        self.splits = unpacked.splits
 
-        # for cheating purposes
-        if self.name == "Buckskin Peak Biotite":
-            x_ticks = np.arange(0, .09, step=.01)
-            y_ticks = np.arange(0, .005, step=0.001)
-        else:
-            x_ticks = np.arange(0, .35, step=.05)
-            y_ticks = np.arange(0, .005, step=0.001)
-        self.x_ticks = x_ticks
-        self.y_ticks = y_ticks
+    def make_plots(self, ax, name, sub_df):
 
-    def organize(self):
-        self.orig_df["Step"] = np.arange(len(self.orig_df)) + 1
-        self.orig_df["39Ar/40Ar"] = 1 / self.orig_df["40Ar/39Ar"]
-        self.orig_df["36Ar/40Ar"] = self.orig_df["36Ar/39Ar"] / self.orig_df["40Ar/39Ar"]
-        new_df = self.orig_df[["Step", "36Ar/40Ar", "39Ar/40Ar", "36Ar/39Ar", "%39Ark", "1SD"]]
+        # plot settings to match Turrin's
+        ax.set_xticks(np.arange(0, .09 + .015, step=.015))
+        ax.set_yticks(np.arange(-.0030, .0055, step=0.0005))
+        ax.set_xlim(left=-.005, right=.09)
+        ax.set_ylim(top=.0055)
 
-        return new_df
+        ax.annotate("Air", (ax.get_xlim()[0], 1 / atm_argon), horizontalalignment='right')
+        ax.set_xlabel("$^{39}$Ar/$^{40}$Ar")
+        ax.set_ylabel("$^{36}$Ar/$^{40}$Ar")
 
-    def get_subsets(self, plateaus):
+        aspect_ratio = get_aspect(ax)
+
+        plateaus = LocatePlateaus(sub_df, self.j_val).plateaus
+        print("Plateaus:", plateaus)
+
+        # condense plateaus to create subsets (remove repeats, turn step to index)
         subsets = []
-        if len(plateaus):
-            if self.verbose:
-                print("\nPlateaus:")
-                for trapped in plateaus.keys():
-                    print("%s: %s" % (trapped, plateaus.get(trapped)))
+        if len(plateaus):  # if there are plateaus
             condensed = list(set(itertools.chain.from_iterable(plateaus.values())))
             for section in condensed:
-                start = section[0]
-                stop = section[1]
-                plateau = Isochron.SectionSteps(self.df, start, stop, True)
-                subsets.append(plateau)
-
+                # +1 for stop index b/c stop for .iloc is length-1
+                subsets.append((step2index(sub_df, section[0]), step2index(sub_df, section[1]) + 1))
         else:
-            if self.verbose:
-                print("\nNo plateaus found.")
-            all_steps = Isochron.SectionSteps(self.df, every=True)
-            subsets.append(all_steps)
-
-        return subsets
-
-    def plot(self):
-
-        plt.plot()
-        ax = plt.gca()
-
-        t0 = time.time()
-        plateaus = find_plateaus(self.df, self.j_val)
-        tf = time.time()
-
-        subsets = self.get_subsets(plateaus)
-        print("plateau finding time:", tf - t0)
+            subsets.append((None, None))
 
         for subset in subsets:
-            df = self.df.iloc[subset.start:subset.stop].reset_index(drop=True)
+            df = sub_df.iloc[subset[0]:subset[1]].reset_index(drop=True)
 
-            xs, ys = df["39Ar/40Ar"], df["36Ar/40Ar"]
-            ax.scatter(xs, ys)
-            for i in df["Step"]:
-                pos = df.index[df["Step"] == i].tolist()[0]
-                plt.annotate(i, (xs[pos], ys[pos]), horizontalalignment="center")
+            covar_xy = df["corr 36/39"] * df["39Ar/40Ar er"] * df["36Ar/40Ar er"]
+            df["ang"] = 0.5 * (
+                np.arctan(
+                    (1 / aspect_ratio) * ((2 * covar_xy) / ((df["39Ar/40Ar er"] ** 2) - (df["36Ar/40Ar er"] ** 2)))))
+            df["ang"] *= (180 / np.pi)  # convert to degrees so matplotlib can use
 
-            [m, b] = np.polyfit(xs, ys, 1)
-            age = (1 / total_decay_40k) * np.log(((1 / (-b / m)) * self.j_val) + 1) / 1000000  # age in Ma
-            plt.plot([0, (-b / m)], [b, 0], label=(
-                    "$^{40}$Ar/$^{36}$Ar = " + str(round(1 / b)) + "\n Age = " + str(round(age, 1)) + " Ma"))
-            plt.legend(loc="upper right")
+            def draw_ellipse(i):
+                covar_mat = np.array([[df["39Ar/40Ar er"].iloc[i] ** 2, covar_xy[i]],
+                                      [covar_xy[i], df["36Ar/40Ar er"].iloc[i] ** 2]])
+                eigenvalues = np.linalg.eigvals(covar_mat)
+                if df["39Ar/40Ar er"].iloc[i] > df["36Ar/40Ar er"].iloc[i]:
+                    x = np.sqrt(max(eigenvalues))
+                    y = np.sqrt(min(eigenvalues))
+                else:
+                    x = np.sqrt(min(eigenvalues))
+                    y = np.sqrt(max(eigenvalues))
+                ax.add_artist(
+                    Ellipse((df["39Ar/40Ar"].iloc[i], df["36Ar/40Ar"].iloc[i]), (x * 2), (y * 2), df["ang"].iloc[i]))
+                ax.annotate(df["Step"][i], (df["39Ar/40Ar"][i], df["36Ar/40Ar"][i]), horizontalalignment="center")
 
-        plt.margins(x=0, y=0)
-        plt.title(self.name)
-        plt.annotate("Air", (0, 1 / atm_argon), horizontalalignment='right')
-        plt.xlabel("$^{39}$Ar/$^{40}$Ar")
-        plt.ylabel("$^{36}$Ar/$^{40}$Ar")
-        plt.xticks(self.x_ticks)
-        plt.yticks(self.y_ticks)
+            vdraw_ellipse = np.vectorize(draw_ellipse)
+            vdraw_ellipse(np.arange(len(df)))
+
+            # create tmp df that is readable by Mahon
+            tmp = df[["39Ar/40Ar", "39Ar/40Ar er", "36Ar/40Ar", "36Ar/40Ar er", "corr 36/39"]]
+            tmp.columns = ["x", "x unc", "y", "y unc", "corr"]
+
+            york = Mahon(tmp)
+            xinter, xinterunc = york.xinter, york.xinterunc
+            yinter, yinterunc = york.yinter, york.yinterunc
+            mswd = york.mswd
+
+            age = (1 / total_decay_40k) * np.log(((1 / xinter) * self.j_val) + 1) / 1000000  # age in Ma
+            ax.plot([ax.get_xlim()[0], xinter], [yinter, 0], label=(
+                    "Age = " + str(round(age, 3)) + " ± " + str(round(xinterunc, 3)) + " Ma" +
+                    "\n$^{40}$Ar/$^{36}$Ar = " + str(round((1 / yinter), 1)) + " ± " + str(round(yinterunc, 1)) +
+                    "\nMSWD = " + str(round(mswd, 1))))
+
+        ax.legend(loc="upper right")
+        ax.set_title(name)
+
+    def plot(self):
+        fig, axs = plt.subplots(len(self.splits.keys()) + 1, 1)
+
+        # create plots for splits individually
+        for split in np.sort(list(self.splits.keys())):
+            print("\nRun ID :", split)
+            ax = axs[list(self.splits.keys()).index(split)]
+            self.make_plots(ax, split, self.splits.get(split))
+
+        # create plot with all splits combined
+        print("\nAll")
+        self.make_plots(axs[len(self.splits.keys())], "All", self.df)
+
+        set_size(22.5 / 2.54, ((13 / 2.54) * len(self.splits)), ax)
         plt.show()
-
-
-if not os.path.exists("outputs"):
-    os.makedirs("outputs")
-
-skip = []
-for file in os.listdir(csv_dir):
-    if file not in skip:  # for debugging purposes
-
-        title = file[:file.find(".csv")]
-        orig_stdout = sys.stdout
-        f = open((os.getcwd() + "/outputs/" + title + ".txt"), 'w')
-        sys.stdout = f
-
-        print(file[:file.find(".csv")])
-        csv_path = os.path.join(csv_dir, file)
-        Isochron(csv_path).plot()
-        print("\n\n")
-
-        sys.stdout = orig_stdout
-        f.close()
