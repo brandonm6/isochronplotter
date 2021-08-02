@@ -4,9 +4,13 @@ import pandas as pd
 from variables import *
 
 
+pd.options.mode.chained_assignment = None  # default='warn'
+
+
 def check_overlap(a0, af, b0, bf):
     # returns True if there is overlap
     return (a0 <= bf) & (af >= b0)
+
 
 def build_intervals(df):
     df["btm"] = df["x"] - df["err"]
@@ -17,10 +21,11 @@ def build_intervals(df):
 
     def create_intervals(i):
         if check_overlap(df["cur btm"].iloc[i], df["cur top"].iloc[i], np.roll(df["cur btm"], 1)[i],
-                              np.roll(df["cur top"], 1)[i]):
+                         np.roll(df["cur top"], 1)[i]):
             # check of overlap with previous
             df["cur btm"].iloc[i] = np.maximum(df["cur btm"].iloc[i], np.roll(df["cur btm"], 1)[i])
             df["cur top"].iloc[i] = np.minimum(df["cur top"].iloc[i], np.roll(df["cur top"], 1)[i])
+
     vcreate_intervals = np.vectorize(create_intervals)
     vcreate_intervals(np.arange(len(df)))
 
@@ -28,21 +33,17 @@ def build_intervals(df):
 
     return df
 
+
 def group_overlaps(df):
-    '''
-    returns groups of STEPS (not indexes) that overlap
-    '''
-    # overlap = 1 where there is overlap with the following x
+    # returns groups of indexes that overlap
+    # overlap = 1 where there is overlap with following x
     df["overlap"] = np.roll(np.where(check_overlap(df["btm"], df["top"], df["cur btm"], df["cur top"]), 1, 0), -1)
 
     df.iloc[-1, df.columns.get_loc("overlap")] = 0  # because last step has no following step
 
     index = np.nonzero(df["overlap"].to_numpy())[0]
 
-    # make function return groups of steps that overlap rather than their indexes
-    index += 1
-
-    if not len(index):  # if no overlaps at all (needed b/c grouped.apply fails - try to stop using grouped.apply)
+    if not len(index):  # if no overlaps at all (needed b/c grouped.apply fails - try to optimize w/o grouped.apply)
         return index
 
     grp = np.split(index, np.where(np.diff(index) != 1)[0] + 1)
@@ -55,57 +56,86 @@ def group_overlaps(df):
 
     return grouped
 
-def check_three(x, err):
-    df = build_intervals(pd.concat([x, err], axis=1, keys=["x", "err"]))
-    groups = group_overlaps(df)
 
+def check_three(df):
+    df = build_intervals(df)
+    groups = group_overlaps(df)
     try:
         ind = pd.DataFrame(groups, columns=["first", "last"])
     except ValueError:
         return []
 
-    least_three = ind.loc[np.where((ind["last"] - ind["first"] +1) >= 3)[0]].to_numpy()
+    least_three = ind.loc[np.where((ind["last"] - ind["first"] + 1) >= 3)[0]].to_numpy()
 
     return least_three
 
 
-def find_plateaus(orig_df, j_val):
-    level = 0.01
-    start = 1 / atm_argon
-    stop = orig_df["36Ar/40Ar"].min()
+class LocatePlateaus:
+    def __init__(self, df, j_val, verbose=True, level=None, start=None, stop=None):
+        self.verbose = verbose
+        self.df = df
+        if level is None:
+            level = 0.01
+        if start is None:
+            start = 1 / atm_argon
+        if stop is None:
+            stop = self.df["36Ar/40Ar"].min()
+        self.level = level
+        self.start = start
+        self.stop = stop
 
-    num_incs = int(np.log(stop / start) / np.log((1 - level)))
-    incs = start * (1 / (1 - level)) ** np.arange(0, -num_incs, -1)
+        self.j_val = j_val
 
-    to_check = {}  # have at least three steps
-    for i in incs:
-        df = orig_df.copy()
-        ar40star_div_ar39 = ((1 / df["39Ar/40Ar"]) - ((1/i) * df["36Ar/39Ar"]))
-        df["Age"] = ((1 / total_decay_40k) * np.log((ar40star_div_ar39 * j_val) + 1)) / 1000000
+        # some variables you can call
+        self.plateaus = None
+        self.find_plateaus()
+        """
+        returns dictionary of trapped argon values as keys and values that are
+        lists of tuples where each tuple is in the format of (start_step, end_step)
+        """
 
-        # because dont have measurements to calculate uncertainty of age
-        df["1SD"] = df["1SD"].multiply(1.75)
+    def find_plateaus(self):
+        num_incs = int(np.log(self.stop / self.start) / np.log((1 - self.level)))
+        incs = self.start * (1 / (1 - self.level)) ** np.arange(0, -num_incs, -1)
 
-        least_three = check_three(df["Age"], df["1SD"])
-        if len(least_three):
-            to_check[1 / i] = least_three
+        to_check = {}  # have at least three steps
+        for i in incs:
+            tmp = self.df[["Step"]]
+            ar40star_div_ar39 = ((1 / self.df["39Ar/40Ar"]) - ((1 / i) * self.df["36Ar/39Ar"]))
+            tmp["Age"] = ((1 / total_decay_40k) * np.log((ar40star_div_ar39 * self.j_val) + 1)) / 1000000
 
-    print("\nAt least three steps:")
-    for trapped in to_check.keys():
-        print("%s: %s" % (trapped, to_check.get(trapped)))
+            # using 1% since we dont have measurements to calculate uncertainty of age
+            tmp["1SD"] = tmp["Age"].multiply(.01)
 
-    plateaus = {}  # have three steps and 50% Ar39
-    for pot_trap in to_check.keys():
-        steps = to_check.get(pot_trap)
-        tmp = pd.DataFrame(steps)
+            tmp.columns = ["Step", "x", "err"]
+            least_three = check_three(tmp)
+            if len(least_three):
+                to_check[1 / i] = least_three
 
-        # subtract 1 in .iloc because using steps not indexes (indexes = steps - 1)
-        last_ind = orig_df["%39Ark"].iloc[tmp.loc[tmp.index, tmp.columns[-1]] - 1].to_numpy()
-        first_ind = orig_df["%39Ark"].iloc[tmp.loc[tmp.index, tmp.columns[0]] - 1].to_numpy()
-        ind = np.where(((last_ind - first_ind) > 50))[0]
+        if self.verbose:
+            print("At least three steps:")
+            for trapped in to_check.keys():
+                print("%s: %s" % (trapped, to_check.get(trapped)))
 
-        keep = list(tmp.iloc[ind, :].itertuples(index=False, name=None))
-        if len(keep):
-            plateaus[pot_trap] = keep
+        plateaus = {}  # have three steps and 50% Ar39
+        for pot_trap in to_check.keys():
+            indexes = to_check.get(pot_trap)
+            tmp = pd.DataFrame(indexes)
 
-    return plateaus
+            tmp["last %39"] = self.df["%39Ark"].iloc[tmp.loc[:, tmp.columns[1]]].to_numpy()
+            tmp["first %39"] = self.df["%39Ark"].iloc[tmp.loc[:, tmp.columns[0]]].to_numpy()
+            tmp["%39ark diff"] = tmp["last %39"] - tmp["first %39"]
+
+            ind = np.where((tmp["%39ark diff"] > 50))[0]
+
+            if len(ind):  # if there are any plateaus
+                keep = tmp.iloc[ind]
+
+                # convert index units to step
+                keep["step0"] = self.df["Step"].iloc[keep.loc[:, keep.columns[0]]].to_numpy()
+                keep["stepf"] = self.df["Step"].iloc[keep.loc[:, keep.columns[1]]].to_numpy()
+                steps = list(keep[["step0", "stepf"]].itertuples(index=False, name=None))
+
+                plateaus[pot_trap] = steps
+
+        self.plateaus = plateaus
