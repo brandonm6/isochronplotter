@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
+from matplotlib.offsetbox import AnchoredText
 import numpy as np
 import itertools
 
@@ -38,25 +39,42 @@ def step2index(df, step):
     return df.index[df['Step'] == step].tolist()[0]
 
 
+def remove_complete_overlaps(lst):
+    """
+    returns list with complete overlaps removed
+    lst: sorted(list)
+    """
+    if len(lst) <= 1:
+        return lst
+    # first interval falls inside second
+    elif (lst[0][0] >= lst[1][0]) and (lst[0][1] <= lst[1][1]):
+        return remove_complete_overlaps(lst[1:])
+    # second interval falls inside first
+    elif (lst[0][0] <= lst[1][0]) and (lst[0][1] >= lst[1][1]):
+        return remove_complete_overlaps([lst[0]] + lst[2:])
+    else:
+        return [lst[0]] + remove_complete_overlaps(lst[1:])
+
+
 class Plotter:
-    def __init__(self, csv_path, remove=None, verbose=True):
+    def __init__(self, csv_path, omit=None, verbose=True, iverbose=False):
         """
         csv_path: path to full raw run data file
-        remove: list of letters to remove (removes all  ex. all As, all Bs, etc.)
+        omit: list of letters to remove (removes all  ex. all As, all Bs, etc.)
         """
-        if remove is None:
-            remove = []
+        if omit is None:
+            omit = []
         self.verbose = verbose
+        self.iverbose = iverbose
         self.name = csv_path[csv_path.rfind("/") + 1:csv_path.find(".csv")]
-        unpacked = BuildDataframe(csv_path, remove)
-        self.removed = unpacked.removed
+        unpacked = BuildDataframe(csv_path, omit)
+        self.force_removed = unpacked.force_removed  # removed run ids that had NaN values
         self.j_val = unpacked.j_val
         self.step_key = unpacked.step_key
         self.df = unpacked.main_df
         self.splits = unpacked.splits
 
-    def make_plots(self, ax, name, sub_df):
-
+    def make_plots(self, ax, name):
         # plot settings to match Turrin's
         ax.set_xticks(np.arange(0, .09 + .015, step=.015))
         ax.set_yticks(np.arange(-.0030, .0055, step=0.0005))
@@ -69,31 +87,38 @@ class Plotter:
 
         aspect_ratio = get_aspect(ax)
 
-        plateaus = LocatePlateaus(sub_df, self.j_val).plateaus
-        print("Plateaus:", plateaus)
+        df = self.df.iloc[np.where((self.df["Run ID"].str[:-1] == name))[0]].reset_index(drop=True)
 
-        # condense plateaus to create subsets (remove repeats, turn step to index)
+        df["covar xy"] = df["corr 36/39"] * df["39Ar/40Ar er"] * df["36Ar/40Ar er"]
+        df["ang"] = 0.5 * (np.arctan(
+            (1 / aspect_ratio) * ((2 * df["covar xy"]) / ((df["39Ar/40Ar er"] ** 2) - (df["36Ar/40Ar er"] ** 2))))) * (
+                            180 / np.pi)
+
+        ok_df = df.iloc[np.where(df["Status"] == "OK")[0]].reset_index(drop=True)
+
+        plateaus = LocatePlateaus(ok_df, self.j_val, verbose=self.verbose, iverbose=self.iverbose).plateaus
+        if self.verbose:
+            print("Plateaus:", plateaus)
+
+        # condense plateaus to create subsets (removes repeats and complete overlaps)
         subsets = []
         if len(plateaus):  # if there are plateaus
+            plat_status = "Plateaus found"
             condensed = list(set(itertools.chain.from_iterable(plateaus.values())))
+            condensed = remove_complete_overlaps(sorted(condensed))
             for section in condensed:
-                # +1 for stop index b/c stop for .iloc is length-1
-                subsets.append((step2index(sub_df, section[0]), step2index(sub_df, section[1]) + 1))
+                subsets.append((section[0], section[1]))
         else:
-            subsets.append((None, None))
+            plat_status = "No plateaus"
+            subsets.append((ok_df["Step"].iloc[0], ok_df["Step"].iloc[-1]))
 
         for subset in subsets:
-            df = sub_df.iloc[subset[0]:subset[1]].reset_index(drop=True)
-
-            covar_xy = df["corr 36/39"] * df["39Ar/40Ar er"] * df["36Ar/40Ar er"]
-            df["ang"] = 0.5 * (
-                np.arctan(
-                    (1 / aspect_ratio) * ((2 * covar_xy) / ((df["39Ar/40Ar er"] ** 2) - (df["36Ar/40Ar er"] ** 2)))))
-            df["ang"] *= (180 / np.pi)  # convert to degrees so matplotlib can use
+            # +1 for stop index b/c stop for .iloc is length-1
+            sub_df = ok_df.iloc[step2index(ok_df, subset[0]):step2index(ok_df, subset[1]) + 1].reset_index(drop=True)
 
             def draw_ellipse(i):
-                covar_mat = np.array([[df["39Ar/40Ar er"].iloc[i] ** 2, covar_xy[i]],
-                                      [covar_xy[i], df["36Ar/40Ar er"].iloc[i] ** 2]])
+                covar_mat = np.array([[df["39Ar/40Ar er"].iloc[i] ** 2, df["covar xy"].iloc[i]],
+                                      [df["covar xy"].iloc[i], df["36Ar/40Ar er"].iloc[i] ** 2]])
                 eigenvalues = np.linalg.eigvals(covar_mat)
                 if df["39Ar/40Ar er"].iloc[i] > df["36Ar/40Ar er"].iloc[i]:
                     x = np.sqrt(max(eigenvalues))
@@ -101,15 +126,22 @@ class Plotter:
                 else:
                     x = np.sqrt(min(eigenvalues))
                     y = np.sqrt(max(eigenvalues))
+
+                if df["Step"].iloc[i] in sub_df["Step"].to_numpy():
+                    color = "C0"
+                else:
+                    color = "C4"
+
                 ax.add_artist(
-                    Ellipse((df["39Ar/40Ar"].iloc[i], df["36Ar/40Ar"].iloc[i]), (x * 2), (y * 2), df["ang"].iloc[i]))
+                    Ellipse((df["39Ar/40Ar"].iloc[i], df["36Ar/40Ar"].iloc[i]), (x * 2), (y * 2), df["ang"].iloc[i],
+                            color=color))
                 ax.annotate(df["Step"][i], (df["39Ar/40Ar"][i], df["36Ar/40Ar"][i]), horizontalalignment="center")
 
             vdraw_ellipse = np.vectorize(draw_ellipse)
             vdraw_ellipse(np.arange(len(df)))
 
             # create tmp df that is readable by Mahon
-            tmp = df[["39Ar/40Ar", "39Ar/40Ar er", "36Ar/40Ar", "36Ar/40Ar er", "corr 36/39"]]
+            tmp = sub_df[["39Ar/40Ar", "39Ar/40Ar er", "36Ar/40Ar", "36Ar/40Ar er", "corr 36/39"]]
             tmp.columns = ["x", "x unc", "y", "y unc", "corr"]
 
             york = Mahon(tmp)
@@ -121,23 +153,23 @@ class Plotter:
             ax.plot([ax.get_xlim()[0], xinter], [yinter, 0], label=(
                     "Age = " + str(round(age, 3)) + " ± " + str(round(xinterunc, 3)) + " Ma" +
                     "\n$^{40}$Ar/$^{36}$Ar = " + str(round((1 / yinter), 1)) + " ± " + str(round(yinterunc, 1)) +
-                    "\nMSWD = " + str(round(mswd, 1))))
+                    "\nMSWD = " + str(round(mswd, 1)) +
+                    ", Steps: " + str(subset[0]) + "-" + str(subset[1])))
+            ax.add_artist(ax.legend(loc='lower left'))
 
-        ax.legend(loc="upper right")
+        ax.add_artist(AnchoredText(plat_status, loc="lower right", frameon=False, pad=0))
+
         ax.set_title(name)
 
     def plot(self):
-        fig, axs = plt.subplots(len(self.splits.keys()) + 1, 1)
+        fig, axs = plt.subplots(len(self.splits), 1)
 
         # create plots for splits individually
-        for split in np.sort(list(self.splits.keys())):
-            print("\nRun ID :", split)
-            ax = axs[list(self.splits.keys()).index(split)]
-            self.make_plots(ax, split, self.splits.get(split))
-
-        # create plot with all splits combined
-        print("\nAll")
-        self.make_plots(axs[len(self.splits.keys())], "All", self.df)
+        for split in self.splits:
+            if self.verbose:
+                print("\nRun ID :", split)
+            ax = axs[self.splits.index(split)]
+            self.make_plots(ax, split)
 
         set_size(22.5 / 2.54, ((13 / 2.54) * len(self.splits)), ax)
         plt.show()
