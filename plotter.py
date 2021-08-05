@@ -101,16 +101,13 @@ class Plotter:
             print("Plateaus:", plateaus)
 
         # condense plateaus to create subsets (removes repeats and complete overlaps)
-        subsets = []
         if len(plateaus):  # if there are plateaus
             plat_status = "Plateaus found"
             condensed = list(set(itertools.chain.from_iterable(plateaus.values())))
-            condensed = remove_complete_overlaps(sorted(condensed))
-            for section in condensed:
-                subsets.append((section[0], section[1]))
+            subsets = remove_complete_overlaps(sorted(condensed))
         else:
             plat_status = "No plateaus"
-            subsets.append((ok_df["Step"].iloc[0], ok_df["Step"].iloc[-1]))
+            subsets = [(ok_df["Step"].iloc[0], ok_df["Step"].iloc[-1])]
 
         for subset in subsets:
             # +1 for stop index b/c stop for .iloc is length-1
@@ -152,10 +149,12 @@ class Plotter:
             age = (1 / total_decay_40k) * np.log(((1 / xinter) * self.j_val) + 1) / 1000000  # age in Ma
             ax.plot([ax.get_xlim()[0], xinter], [yinter, 0], label=(
                     "Age = " + str(round(age, 3)) + " ± " + str(round(xinterunc, 3)) + " Ma" +
-                    "\n$^{40}$Ar/$^{36}$Ar = " + str(round((1 / yinter), 1)) + " ± " + str(round(yinterunc, 1)) +
+                    "\n$^{40}$Ar/$^{36}$Ar = " + str(round((1 / yinter), 1)) + " ± " + str(yinterunc) +
                     "\nMSWD = " + str(round(mswd, 1)) +
                     ", Steps: " + str(subset[0]) + "-" + str(subset[1])))
             ax.add_artist(ax.legend(loc='lower left'))
+
+        # str(round(yinterunc, 1))
 
         ax.add_artist(AnchoredText(plat_status, loc="lower right", frameon=False, pad=0))
 
