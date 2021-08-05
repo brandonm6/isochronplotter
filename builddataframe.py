@@ -71,7 +71,7 @@ class BuildDataframe:
             pct_39ark = np.append(pct_39ark, ((tmp["Ar39 moles"] / tmp["Ar39 moles"].sum()) * 100).cumsum().to_numpy())
 
         # updates main dataframe with cum %39Ark column
-        self.main_df["%39Ark"] = pct_39ark
+        self.main_df["cum %39Ark"] = pct_39ark
 
         return list(id_nums)
 
