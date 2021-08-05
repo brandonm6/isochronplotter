@@ -3,8 +3,19 @@ import pandas as pd
 
 from variables import *
 
-
 pd.options.mode.chained_assignment = None  # default='warn'
+
+
+def index2step(indexes, df):
+    """
+    indexes: array of start and stop indexes ex. [[2 5] [8 12]]
+    df: dataframe to compare to
+    """
+    tmp = pd.DataFrame(indexes)
+    tmp["step0"] = df["Step"].iloc[tmp.loc[:, tmp.columns[0]]].to_numpy()
+    tmp["stepf"] = df["Step"].iloc[tmp.loc[:, tmp.columns[1]]].to_numpy()
+
+    return list(tmp[["step0", "stepf"]].itertuples(index=False, name=None))
 
 
 def check_overlap(a0, af, b0, bf):
@@ -57,9 +68,12 @@ def group_overlaps(df):
     return grouped
 
 
-def check_three(df):
+def check_three(df, iverbose):
     df = build_intervals(df)
     groups = group_overlaps(df)
+    if iverbose:
+        print(df)
+        print(groups)
     try:
         ind = pd.DataFrame(groups, columns=["first", "last"])
     except ValueError:
@@ -71,8 +85,9 @@ def check_three(df):
 
 
 class LocatePlateaus:
-    def __init__(self, df, j_val, verbose=True, level=None, start=None, stop=None):
+    def __init__(self, df, j_val, verbose=True, iverbose=False, level=None, start=None, stop=None):
         self.verbose = verbose
+        self.iverbose = iverbose  # incremental verbose - prints dataframe for every incremented trapped argon
         self.df = df
         if level is None:
             level = 0.01
@@ -98,24 +113,29 @@ class LocatePlateaus:
         num_incs = int(np.log(self.stop / self.start) / np.log((1 - self.level)))
         incs = self.start * (1 / (1 - self.level)) ** np.arange(0, -num_incs, -1)
 
-        to_check = {}  # have at least three steps
+        to_check = {}  # have at least three steps, format is trapped:
         for i in incs:
             tmp = self.df[["Step"]]
             ar40star_div_ar39 = ((1 / self.df["39Ar/40Ar"]) - ((1 / i) * self.df["36Ar/39Ar"]))
             tmp["Age"] = ((1 / total_decay_40k) * np.log((ar40star_div_ar39 * self.j_val) + 1)) / 1000000
 
-            # using 1% since we dont have measurements to calculate uncertainty of age
-            tmp["1SD"] = tmp["Age"].multiply(.01)
+            # using error for atmospheric argon since we dont have measurements to calculate the actual
+            # uncertainty for each age on the incremented level of excess argon
+            tmp["1SD"] = self.df["Age er"]
+            if self.iverbose:
+                print("Trapped:", (1 / i))
 
             tmp.columns = ["Step", "x", "err"]
-            least_three = check_three(tmp)
+            least_three = check_three(tmp, self.iverbose)
             if len(least_three):
                 to_check[1 / i] = least_three
 
         if self.verbose:
             print("At least three steps:")
             for trapped in to_check.keys():
-                print("%s: %s" % (trapped, to_check.get(trapped)))
+                # convert index to steps for clarity purposes
+                steps = index2step(to_check.get(trapped), self.df)
+                print("%s: %s" % (trapped, steps))
 
         plateaus = {}  # have three steps and 50% Ar39
         for pot_trap in to_check.keys():
@@ -129,13 +149,9 @@ class LocatePlateaus:
             ind = np.where((tmp["%39ark diff"] > 50))[0]
 
             if len(ind):  # if there are any plateaus
-                keep = tmp.iloc[ind]
-
-                # convert index units to step
-                keep["step0"] = self.df["Step"].iloc[keep.loc[:, keep.columns[0]]].to_numpy()
-                keep["stepf"] = self.df["Step"].iloc[keep.loc[:, keep.columns[1]]].to_numpy()
-                steps = list(keep[["step0", "stepf"]].itertuples(index=False, name=None))
-
+                # convert index units to step units
+                keep = tmp.iloc[ind].to_numpy()
+                steps = index2step(keep, self.df)
                 plateaus[pot_trap] = steps
 
         self.plateaus = plateaus
