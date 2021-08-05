@@ -4,6 +4,7 @@ import pandas as pd
 from variables import *
 
 pd.options.mode.chained_assignment = None  # default='warn'
+pd.set_option('expand_frame_repr', False)
 
 
 def index2step(indexes, df):
@@ -24,23 +25,23 @@ def check_overlap(a0, af, b0, bf):
 
 
 def build_intervals(df):
-    df["btm"] = df["x"] - df["err"]
-    df["top"] = df["x"] + df["err"]
+    df["btm"] = df["Age"] - df["1SD"]
+    df["top"] = df["Age"] + df["1SD"]
 
-    df["cur btm"] = df["btm"]
-    df["cur top"] = df["top"]
+    df["cum btm"] = df["btm"]
+    df["cum top"] = df["top"]
 
     def create_intervals(i):
-        if check_overlap(df["cur btm"].iloc[i], df["cur top"].iloc[i], np.roll(df["cur btm"], 1)[i],
-                         np.roll(df["cur top"], 1)[i]):
+        if check_overlap(df["cum btm"].iloc[i], df["cum top"].iloc[i], np.roll(df["cum btm"], 1)[i],
+                         np.roll(df["cum top"], 1)[i]):
             # check of overlap with previous
-            df["cur btm"].iloc[i] = np.maximum(df["cur btm"].iloc[i], np.roll(df["cur btm"], 1)[i])
-            df["cur top"].iloc[i] = np.minimum(df["cur top"].iloc[i], np.roll(df["cur top"], 1)[i])
+            df["cum btm"].iloc[i] = np.maximum(df["cum btm"].iloc[i], np.roll(df["cum btm"], 1)[i])
+            df["cum top"].iloc[i] = np.minimum(df["cum top"].iloc[i], np.roll(df["cum top"], 1)[i])
 
     vcreate_intervals = np.vectorize(create_intervals)
     vcreate_intervals(np.arange(len(df)))
 
-    df["cur btm"], df["cur top"] = np.roll(df["cur btm"], 1), np.roll(df["cur top"], 1)
+    df["cum btm"], df["cum top"] = np.roll(df["cum btm"], 1), np.roll(df["cum top"], 1)
 
     return df
 
@@ -48,7 +49,7 @@ def build_intervals(df):
 def group_overlaps(df):
     # returns groups of indexes that overlap
     # overlap = 1 where there is overlap with following x
-    df["overlap"] = np.roll(np.where(check_overlap(df["btm"], df["top"], df["cur btm"], df["cur top"]), 1, 0), -1)
+    df["overlap"] = np.roll(np.where(check_overlap(df["btm"], df["top"], df["cum btm"], df["cum top"]), 1, 0), -1)
 
     df.iloc[-1, df.columns.get_loc("overlap")] = 0  # because last step has no following step
 
@@ -125,7 +126,6 @@ class LocatePlateaus:
             if self.iverbose:
                 print("Trapped:", (1 / i))
 
-            tmp.columns = ["Step", "x", "err"]
             least_three = check_three(tmp, self.iverbose)
             if len(least_three):
                 to_check[1 / i] = least_three
