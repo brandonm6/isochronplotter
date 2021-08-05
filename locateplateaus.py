@@ -25,8 +25,8 @@ def check_overlap(a0, af, b0, bf):
 
 
 def build_intervals(df):
-    df["btm"] = df["Age"] - df["1SD"]
-    df["top"] = df["Age"] + df["1SD"]
+    df["btm"] = df["Age"] - df["2SD"]
+    df["top"] = df["Age"] + df["2SD"]
 
     df["cum btm"] = df["btm"]
     df["cum top"] = df["top"]
@@ -122,7 +122,7 @@ class LocatePlateaus:
 
             # using error for atmospheric argon since we dont have measurements to calculate the actual
             # uncertainty for each age on the incremented level of excess argon
-            tmp["1SD"] = self.df["Age er"]
+            tmp["2SD"] = self.df["Age er"] * 2
             if self.iverbose:
                 print("Trapped:", (1 / i))
 
@@ -142,11 +142,11 @@ class LocatePlateaus:
             indexes = to_check.get(pot_trap)
             tmp = pd.DataFrame(indexes)
 
-            tmp["last %39"] = self.df["%39Ark"].iloc[tmp.loc[:, tmp.columns[1]]].to_numpy()
-            tmp["first %39"] = self.df["%39Ark"].iloc[tmp.loc[:, tmp.columns[0]]].to_numpy()
-            tmp["%39ark diff"] = tmp["last %39"] - tmp["first %39"]
+            tmp["last %39"] = self.df["cum %39Ark"].iloc[tmp.loc[:, tmp.columns[1]]].to_numpy()
+            tmp["first %39"] = self.df["cum %39Ark"].iloc[tmp.loc[:, tmp.columns[0]]].to_numpy()
+            tmp["cum %39ark diff"] = tmp["last %39"] - tmp["first %39"]
 
-            ind = np.where((tmp["%39ark diff"] > 50))[0]
+            ind = np.where((tmp["cum %39ark diff"] > 50))[0]
 
             if len(ind):  # if there are any plateaus
                 # convert index units to step units
