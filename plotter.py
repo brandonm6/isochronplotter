@@ -1,3 +1,4 @@
+import os
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 from matplotlib.offsetbox import AnchoredText
@@ -62,6 +63,9 @@ class Plotter:
         csv_path: path to full raw run data file
         omit: list of letters to remove (removes all  ex. all As, all Bs, etc.)
         """
+        self.output_path = os.path.join(os.path.dirname(os.path.realpath("isochron-plotter")), "outputs")
+        if not os.path.exists(self.output_path):
+            os.makedirs(self.output_path)
         if omit is None:
             omit = []
         self.verbose = verbose
@@ -76,6 +80,8 @@ class Plotter:
 
     def make_plots(self, ax, name):
         # plot settings to match Turrin's
+        set_size(9, 5.25, ax)
+
         ax.set_xticks(np.arange(0, .09 + .015, step=.015))
         ax.set_yticks(np.arange(-.0030, .0055, step=0.0005))
         ax.set_xlim(left=-.005, right=.09)
@@ -85,10 +91,9 @@ class Plotter:
         ax.set_xlabel("$^{39}$Ar/$^{40}$Ar")
         ax.set_ylabel("$^{36}$Ar/$^{40}$Ar")
 
-        aspect_ratio = get_aspect(ax)
-
         df = self.df.iloc[np.where((self.df["Run ID"].str[:-1] == name))[0]].reset_index(drop=True)
 
+        aspect_ratio = get_aspect(ax)
         df["covar xy"] = df["corr 36/39"] * df["39Ar/40Ar er"] * df["36Ar/40Ar er"]
         df["ang"] = 0.5 * (np.arctan(
             (1 / aspect_ratio) * ((2 * df["covar xy"]) / ((df["39Ar/40Ar er"] ** 2) - (df["36Ar/40Ar er"] ** 2))))) * (
@@ -160,15 +165,13 @@ class Plotter:
 
         ax.set_title(name)
 
-    def plot(self):
-        fig, axs = plt.subplots(len(self.splits), 1)
+        plt.savefig(self.output_path + "/" + name + '.png')
 
+    def plot(self):
         # create plots for splits individually
         for split in self.splits:
+            plt.figure(self.splits.index(split))
+            ax = plt.gca()
             if self.verbose:
                 print("\nRun ID :", split)
-            ax = axs[self.splits.index(split)]
             self.make_plots(ax, split)
-
-        set_size(22.5 / 2.54, ((13 / 2.54) * len(self.splits)), ax)
-        plt.show()
