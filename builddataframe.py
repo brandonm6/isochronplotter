@@ -5,31 +5,29 @@ import numpy as np
 class BuildDataframe:
     # unpacks and builds dataframe
 
-    def __init__(self, csv_path, omit):
-        self.omit = omit
-
-        # run ids removed from the data set (NaN values)
-        self.force_removed = None
-        self.j_val = None
-        # dataframe of steps that correspond with their run ids
-        self.step_key = None
-
+    def __init__(self, csv_path, omit=None):
         self.orig_df = pd.read_csv(csv_path)
 
-        # main df with corrected values
+        # run ids that were removed from the data set (contained NaN values)
+        self.force_removed = None
+        self.j_val = None
+        # main df with corrections
         self.main_df = self.build_main()
-        # list of Run ID#s
+        # sorted list of Run ID#s
         self.splits = self.find_splits()
 
-        self.update_omit()
+        self.omit = omit
+        if omit is not None:
+            self.update_omit()
 
     def build_main(self):
-        # remove empty rows and correct column names
         start = np.where(self.orig_df[self.orig_df.columns[0]] == "Run_ID")[0][0]
+        # drop empty rows before the first run id
         self.orig_df = self.orig_df.rename(columns=self.orig_df.iloc[start]).drop(
             self.orig_df.index[:start + 1]).reset_index(drop=True)
-        stop = np.where(self.orig_df["Run_ID"].fillna("") == "")[0][0]
-        self.orig_df = self.orig_df.iloc[:stop].reset_index(drop=True)
+        # drop rows after the last run id
+        self.orig_df = self.orig_df.iloc[:np.where(self.orig_df["Run_ID"].fillna("") == "")[0][0]].reset_index(
+            drop=True)
 
         self.j_val = float(self.orig_df["J"].iloc[0])
         self.orig_df["Step"] = np.arange(len(self.orig_df)) + 1
@@ -60,12 +58,11 @@ class BuildDataframe:
 
     def find_splits(self):
         # find splits in the sample
-        id_nums = np.sort(
-            list(set([run_id[:run_id.find(next(filter(str.isalpha, run_id)))] for run_id in self.main_df["Run ID"]])))
+        id_nums = sorted({run_id[:run_id.find(next(filter(str.isalpha, run_id)))] for run_id in self.main_df["Run ID"]})
 
         pct_39ark = np.array([])
         for num in id_nums:
-            # builds splits dataframes to get cum %39Ar
+            # build splits dataframes to get cum %39Ar
             steps = np.where(self.main_df["Run ID"].str.contains(num))[0]
             tmp = self.main_df.iloc[int(steps[0]):int(steps[-1]) + 1]
             pct_39ark = np.append(pct_39ark, ((tmp["Ar39 moles"] / tmp["Ar39 moles"].sum()) * 100).cumsum().to_numpy())
@@ -77,7 +74,7 @@ class BuildDataframe:
 
     def update_omit(self):
         # updates status of omitted letters in main_df
-        for num in self.main_df["Run ID"]:
+        for i in self.main_df.index:
             # check if run id letter is in omit
-            if num[-1] in self.omit:
-                self.main_df["Status"].iloc[self.main_df["Run ID"][self.main_df["Run ID"] == num].index] = "Omitted"
+            if self.main_df["Run ID"].iloc[i][-1] in self.omit:
+                self.main_df["Status"].iloc[i] = "Omitted"
