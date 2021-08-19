@@ -12,7 +12,7 @@ from mahon import Mahon
 
 
 def set_size(w, h, ax):
-    """ w, h: width, height in inches """
+    # w, h: width, height in inches
     left = ax.figure.subplotpars.left
     right = ax.figure.subplotpars.right
     top = ax.figure.subplotpars.top
@@ -41,10 +41,9 @@ def step2index(df, step):
 
 
 def remove_complete_overlaps(lst):
-    """
-    returns list with complete overlaps removed
-    lst: sorted(list)
-    """
+    # returns list with complete overlaps removed
+    #     ex. [[3, 7], [3, 6], [5, 9]] -> [[3, 7], [5, 9]]
+    # lst: sorted(list)
     if len(lst) <= 1:
         return lst
     # first interval falls inside second
@@ -59,10 +58,8 @@ def remove_complete_overlaps(lst):
 
 class Plotter:
     def __init__(self, csv_path, omit=None, verbose=True, iverbose=False):
-        """
-        csv_path: path to full raw run data file
-        omit: list of letters to remove (removes all  ex. all As, all Bs, etc.)
-        """
+        # csv_path: path to full raw run data file
+        # omit: list of letters to remove (removes all  ex. all As, all Bs, etc.)
         self.output_path = os.path.join(os.path.dirname(os.path.realpath("isochron-plotter")), "outputs")
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
@@ -71,10 +68,9 @@ class Plotter:
         self.verbose = verbose
         self.iverbose = iverbose
         self.name = csv_path[csv_path.rfind("/") + 1:csv_path.find(".csv")]
-        unpacked = BuildDataframe(csv_path, omit)
+        unpacked = BuildDataframe(csv_path, set(omit))
         self.force_removed = unpacked.force_removed  # removed run ids that had NaN values
         self.j_val = unpacked.j_val
-        self.step_key = unpacked.step_key
         self.df = unpacked.main_df
         self.splits = unpacked.splits
 
@@ -118,16 +114,17 @@ class Plotter:
             # +1 for stop index b/c stop for .iloc is length-1
             sub_df = ok_df.iloc[step2index(ok_df, subset[0]):step2index(ok_df, subset[1]) + 1].reset_index(drop=True)
 
-            def draw_ellipse(i):
+            # draw ellipse
+            for i in np.arange(len(df)):
                 covar_mat = np.array([[df["39Ar/40Ar er"].iloc[i] ** 2, df["covar xy"].iloc[i]],
                                       [df["covar xy"].iloc[i], df["36Ar/40Ar er"].iloc[i] ** 2]])
                 eigenvalues = np.linalg.eigvals(covar_mat)
                 if df["39Ar/40Ar er"].iloc[i] > df["36Ar/40Ar er"].iloc[i]:
-                    x = np.sqrt(max(eigenvalues))
-                    y = np.sqrt(min(eigenvalues))
+                    x = np.sqrt(np.max(eigenvalues))
+                    y = np.sqrt(np.min(eigenvalues))
                 else:
-                    x = np.sqrt(min(eigenvalues))
-                    y = np.sqrt(max(eigenvalues))
+                    x = np.sqrt(np.min(eigenvalues))
+                    y = np.sqrt(np.max(eigenvalues))
 
                 if df["Step"].iloc[i] in sub_df["Step"].to_numpy():
                     color = "C0"
@@ -138,9 +135,6 @@ class Plotter:
                     Ellipse((df["39Ar/40Ar"].iloc[i], df["36Ar/40Ar"].iloc[i]), (x * 2), (y * 2), df["ang"].iloc[i],
                             color=color))
                 ax.annotate(df["Step"][i], (df["39Ar/40Ar"][i], df["36Ar/40Ar"][i]), horizontalalignment="center")
-
-            vdraw_ellipse = np.vectorize(draw_ellipse)
-            vdraw_ellipse(np.arange(len(df)))
 
             # create tmp df that is readable by Mahon
             tmp = sub_df[["39Ar/40Ar", "39Ar/40Ar er", "36Ar/40Ar", "36Ar/40Ar er", "corr 36/39"]]
