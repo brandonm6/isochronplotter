@@ -167,5 +167,5 @@ class Plotter:
             plt.figure(self.splits.index(split))
             ax = plt.gca()
             if self.verbose:
-                print("\nRun ID :", split)
+                print("\n\nRun ID :", split)
             self.make_plots(ax, split)

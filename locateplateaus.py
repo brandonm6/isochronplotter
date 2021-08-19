@@ -48,7 +48,6 @@ def check_three(df, iverbose=False):
         if iverbose:
             print(groups)
         return np.array([group for group in groups if (group[1] - group[0]) + 1 >= 3])
-
     except IndexError:  # indexes is empty (no overlaps at all)
         return indexes  # empty numpy array
 
@@ -96,7 +95,7 @@ class LocatePlateaus:
         if self.verbose:
             print("At least three consecutive steps:")
             # convert index to steps for easier reading
-            print("".join([f"\n{trap}: {index2step(to_check.get(trap), self.df)}" for trap in to_check]))
+            print("".join([f"{trap}: {index2step(to_check.get(trap), self.df)}\n" for trap in to_check]))
 
         plateaus = {}  # have three consecutive steps and 50% Ar39
         for trap in to_check:
