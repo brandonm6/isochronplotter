@@ -16,8 +16,8 @@ class BuildDataframe:
         # sorted list of Run ID#s
         self.splits = self.find_splits()
 
-        self.omit = omit
         if omit is not None:
+            self.omit = set(np.char.upper(omit))
             self.update_omit()
 
     def build_main(self):
