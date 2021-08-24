@@ -73,8 +73,10 @@ class LocatePlateaus:
         """
 
     def find_plateaus(self):
-        num_incs = int(np.log(self.stop / self.start) / np.log((1 - self.level)))
-        incs = self.start * (1 / (1 - self.level)) ** np.arange(0, -num_incs, -1)
+        # gets final exponent of the increments assuming base of 1-level (default=.99)
+        final_exp = int((np.log(self.stop / self.start) / np.log((1 - self.level))) + 0.5)
+        # builds array of values to increment over where each is .99 the previous
+        incs = self.start * ((1 - self.level) ** np.arange(0, final_exp + 1, 1))
 
         to_check = {}  # have at least three steps, format is trapped:
         for i in incs:
