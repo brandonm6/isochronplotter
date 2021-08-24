@@ -41,9 +41,12 @@ def step2index(df, step):
 
 
 def remove_complete_overlaps(lst):
-    # returns list with complete overlaps removed
-    #     ex. [[3, 7], [3, 6], [5, 9]] -> [[3, 7], [5, 9]]
-    # lst: sorted(list)
+    """Removes complete overlaps in a list of intervals
+
+    - ex. [[3, 7], [3, 6], [5, 9]] --> [[3, 7], [5, 9]]
+    :param lst: sorted(list) where list holds intervals
+    :return: list with complete overlaps removed
+    """
     if len(lst) <= 1:
         return lst
     # first interval falls inside second
