@@ -87,7 +87,7 @@ class Plotter:
         self.df = unpacked.main_df
         self.splits = unpacked.splits
 
-    def make_plots(self, plt, name):
+    def make_plots(self, name):
         ax = plt.gca()
 
         # plot settings to match Turrin's
@@ -188,4 +188,4 @@ class Plotter:
             plt.figure(self.splits.index(split))
             if self.verbose:
                 print("\n\nRun ID :", split)
-            self.make_plots(plt, split)
+            self.make_plots(split)
