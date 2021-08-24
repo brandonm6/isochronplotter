@@ -16,9 +16,10 @@ class BuildDataframe:
         # sorted list of Run ID#s
         self.splits = self.find_splits()
 
-        if omit is not None:
-            self.omit = set(np.char.upper(omit))
-            self.update_omit()
+        if omit:  # omit is not empty
+            # updates status of omitted run ids in main_df
+            self.main_df["Status"].iloc[list({i for i in self.main_df.index if any(
+                o in self.main_df["Run ID"].iloc[i] for o in set(np.char.upper(omit)))})] = "Omitted"
 
     def build_main(self):
         start = np.where(self.orig_df[self.orig_df.columns[0]] == "Run_ID")[0][0]
@@ -71,10 +72,3 @@ class BuildDataframe:
         self.main_df["cum %39Ark"] = pct_39ark
 
         return list(id_nums)
-
-    def update_omit(self):
-        # updates status of omitted letters in main_df
-        for i in self.main_df.index:
-            # check if run id letter is in omit
-            if self.main_df["Run ID"].iloc[i][-1] in self.omit:
-                self.main_df["Status"].iloc[i] = "Omitted"
