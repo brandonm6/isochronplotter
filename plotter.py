@@ -57,14 +57,16 @@ def remove_complete_overlaps(lst):
 
 
 class Plotter:
-    def __init__(self, csv_path, omit=None, verbose=True, iverbose=False):
+    def __init__(self, csv_path, omit=None, save=True, verbose=True, iverbose=False):
         # csv_path: path to full raw run data file
+        # save: option to downloads plots as pngs
         # omit: list of letters to remove (removes all  ex. all As, all Bs, etc.)
         self.output_path = os.path.join(os.path.dirname(os.path.realpath("isochron-plotter")), "outputs")
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
         if omit is None:
             omit = []
+        self.save = save
         self.verbose = verbose
         self.iverbose = iverbose
         self.name = csv_path[csv_path.rfind("/") + 1:csv_path.find(".csv")]
@@ -159,7 +161,8 @@ class Plotter:
         ax.add_artist(AnchoredText(plat_status, loc="lower right", frameon=False, pad=0))
         ax.set_title(name)
 
-        plt.savefig(self.output_path + "/" + name + '.png')
+        if self.save:
+            plt.savefig(self.output_path + "/" + name + '.png')
 
     def plot(self):
         # create plots for splits individually
