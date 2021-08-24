@@ -1,4 +1,5 @@
 import os
+
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 from matplotlib.offsetbox import AnchoredText
@@ -64,7 +65,7 @@ class Plotter:
         """
 
         :param str csv_path: path to full raw run data file (from Mass Spec) in csv format
-        :param list omit: list of letters to remove all of (ex. all As, all Bs, etc.)
+        :param list omit: list of letters or numbers to remove all of (ex. all As, all 2s, etc.)
         :param save: saves plots as pngs to isochron-plotter/outputs
         :param verbose: prints three consecutive steps and plateaus found by locate_plateaus
         :param iverbose: prints dataframe for every incremented trapped argon along with groups of overlapping steps
@@ -79,12 +80,16 @@ class Plotter:
         self.iverbose = iverbose
         self.name = csv_path[csv_path.rfind("/") + 1:csv_path.find(".csv")]
         unpacked = BuildDataframe(csv_path, omit)
+
+        # Some variables to call
         self.force_removed = unpacked.force_removed  # removed run ids that had NaN values
         self.j_val = unpacked.j_val
         self.df = unpacked.main_df
         self.splits = unpacked.splits
 
-    def make_plots(self, ax, name):
+    def make_plots(self, plt, name):
+        ax = plt.gca()
+
         # plot settings to match Turrin's
         set_size(9, 5.25, ax)
 
@@ -106,6 +111,11 @@ class Plotter:
                             180 / np.pi)
 
         ok_df = df.iloc[np.where(df["Status"] == "OK")[0]].reset_index(drop=True)
+
+        if ok_df.empty:  # may be because all the run ids were ommitted
+            print(f"{name} is empty.")
+            plt.clf()
+            return
 
         plateaus = LocatePlateaus(ok_df, self.j_val, verbose=self.verbose, iverbose=self.iverbose).plateaus
         if self.verbose:
@@ -176,7 +186,6 @@ class Plotter:
         # create plots for splits individually
         for split in self.splits:
             plt.figure(self.splits.index(split))
-            ax = plt.gca()
             if self.verbose:
                 print("\n\nRun ID :", split)
-            self.make_plots(ax, split)
+            self.make_plots(plt, split)
