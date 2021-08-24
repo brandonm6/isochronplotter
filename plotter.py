@@ -58,9 +58,14 @@ def remove_complete_overlaps(lst):
 
 class Plotter:
     def __init__(self, csv_path, omit=None, save=True, verbose=True, iverbose=False):
-        # csv_path: path to full raw run data file
-        # save: option to downloads plots as pngs
-        # omit: list of letters to remove (removes all  ex. all As, all Bs, etc.)
+        """
+
+        :param str csv_path: path to full raw run data file (from Mass Spec) in csv format
+        :param list omit: list of letters to remove all of (ex. all As, all Bs, etc.)
+        :param save: saves plots as pngs to isochron-plotter/outputs
+        :param verbose: prints three consecutive steps and plateaus found by locate_plateaus
+        :param iverbose: prints dataframe for every incremented trapped argon along with groups of overlapping steps
+        """
         self.output_path = os.path.join(os.path.dirname(os.path.realpath("isochron-plotter")), "outputs")
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
@@ -70,7 +75,7 @@ class Plotter:
         self.verbose = verbose
         self.iverbose = iverbose
         self.name = csv_path[csv_path.rfind("/") + 1:csv_path.find(".csv")]
-        unpacked = BuildDataframe(csv_path, set(omit))
+        unpacked = BuildDataframe(csv_path, omit)
         self.force_removed = unpacked.force_removed  # removed run ids that had NaN values
         self.j_val = unpacked.j_val
         self.df = unpacked.main_df
