@@ -64,15 +64,15 @@ class LocatePlateaus:
         self.stop = stop
         self.j_val = j_val
 
-        # some variables you can call
-        self.plateaus = None
-        self.find_plateaus()
-        """
-        returns dictionary of trapped argon values as keys and values that are
-        lists of tuples where each tuple is in the format of (start_step, end_step)
-        """
+        # variable to call get found plateaus
+        self.plateaus = self.find_plateaus()
 
     def find_plateaus(self):
+        """Finds plateaus where a plateau has at least three consecutive steps and at least 50% cumulative 39Ar
+
+        :return: dictionary where keys are trapped argon values and values are lists of tuples with each tuple in the
+            format of (start_step, end_step)
+        """
         # gets final exponent of the increments assuming base of 1-level (default=.99)
         final_exp = int((np.log(self.stop / self.start) / np.log((1 - self.level))) + 0.5)
         # builds array of values to increment over where each is .99 the previous
@@ -99,7 +99,7 @@ class LocatePlateaus:
             # convert index to steps for easier reading
             print("".join([f"{trap}: {index2step(to_check.get(trap), self.df)}\n" for trap in to_check]))
 
-        plateaus = {}  # have three consecutive steps and 50% Ar39
+        plateaus = {}  # have three consecutive steps and 50% 39Ar
         for trap in to_check:
             least_fifty = np.array([i for i in to_check.get(trap) if
                                     (self.df["cum %39Ark"].iloc[i[1]] - self.df["cum %39Ark"].iloc[i[0]]) >= 50])
@@ -107,4 +107,4 @@ class LocatePlateaus:
                 # convert index units to step units
                 plateaus[trap] = index2step(least_fifty, self.df)
 
-        self.plateaus = plateaus
+        return plateaus
