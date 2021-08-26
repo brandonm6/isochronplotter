@@ -35,7 +35,7 @@ PNGs of the plots are saved to `isochronplotter/outputs`.
 - omit: list of letters or numbers to remove from all splits (ex. `["a", "232226-01", "1"]`)
 - save: download plots as PNGs to `isochronplotter/outputs`
 - verbose: print initial <sup>40</sup>Ar/<sup>36</sup>Ar ratios that have at least three consecutive steps and all 
-plateaus found by LocatePlateaus (_locateplateas.py_)
+plateaus found by LocatePlateaus (_locateplateaus.py_)
 - iverbose: print DataFrames for each increment along with the groups of overlapping steps
 
 #### Other variables to call from Plotter
