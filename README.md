@@ -30,7 +30,7 @@ Plotter("path_to_csv").plot()
 
 PNGs of the plots are saved to `isochron-plotter/outputs`.
 
-####Other attributes of Plotter
+#### Other attributes of Plotter
 
 - omit: list of letters or numbers to remove from all splits (ex. `["a", "232226-01", "1"]`)
 - save: download plots as PNGs to `isochron-plotter/outputs`
