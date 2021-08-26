@@ -38,6 +38,11 @@ PNGs of the plots are saved to `isochron-plotter/outputs`.
 plateaus found by LocatePlateaus (_locateplateas.py_)
 - iverbose: print DataFrames for each increment along with the groups of overlapping steps
 
+#### Other variables to call from Plotter
+
+- `force_remove`: list of removed run-ids that had NaN values
+- `df`: DataFrame holding the modified data
+
 ### Prerequisites
 1. Numpy
 2. Pandas
