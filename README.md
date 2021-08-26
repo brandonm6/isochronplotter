@@ -1,4 +1,4 @@
-# Isochron-Plotter
+# IsochronPlotter
 Constructs isochron diagrams for argon-argon (40Ar/39Ar) data.
 
 ## Method
@@ -11,7 +11,7 @@ checks if they have at least 50% cumulative 39Ar - these are considered plateaus
 
 ## Usage
 ### Preparing a data set
-Isochron-Plotter accepts CSVs formatted with the following columns:
+IsochronPlotter accepts CSVs formatted with the following columns:
 
 | Run_ID | Isoch_39_Over_40 | Pct_i39_Over_40_Er | Isoch_36_Over_40 | Pct_i36_Over_40_Er | Correl_36_Over_39 | Ar36_Over_Ar39 | Ar39_Moles | Age_Er |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -28,12 +28,12 @@ from plotter import Plotter
 Plotter("path_to_csv").plot()
 ```
 
-PNGs of the plots are saved to `isochron-plotter/outputs`.
+PNGs of the plots are saved to `isochronplotter/outputs`.
 
 #### Other attributes of Plotter
 
 - omit: list of letters or numbers to remove from all splits (ex. `["a", "232226-01", "1"]`)
-- save: download plots as PNGs to `isochron-plotter/outputs`
+- save: download plots as PNGs to `isochronplotter/outputs`
 - verbose: print initial <sup>40</sup>Ar/<sup>36</sup>Ar ratios that have at least three consecutive steps and all 
 plateaus found by LocatePlateaus (_locateplateas.py_)
 - iverbose: print DataFrames for each increment along with the groups of overlapping steps

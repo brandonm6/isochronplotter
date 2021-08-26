@@ -66,11 +66,11 @@ class Plotter:
 
         :param str csv_path: path to full raw run data file (from Mass Spec) in csv format
         :param list omit: list of letters or numbers to remove all of (ex. all As, all 2s, etc.)
-        :param save: saves plots as pngs to isochron-plotter/outputs
+        :param save: saves plots as pngs to isochronplotter/outputs
         :param verbose: prints three consecutive steps and plateaus found by locate_plateaus
         :param iverbose: prints dataframe for every incremented trapped argon along with groups of overlapping steps
         """
-        self.output_path = os.path.join(os.path.dirname(os.path.realpath("isochron-plotter")), "outputs")
+        self.output_path = os.path.join(os.path.dirname(os.path.realpath("isochronplotter")), "outputs")
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
         if omit is None:
