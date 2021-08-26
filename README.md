@@ -13,8 +13,8 @@ checks if they have at least 50% cumulative 39Ar - these are considered plateaus
 ### Preparing a data set
 IsochronPlotter accepts CSVs formatted with the following columns:
 
-| Run_ID | Isoch_39_Over_40 | Pct_i39_Over_40_Er | Isoch_36_Over_40 | Pct_i36_Over_40_Er | Correl_36_Over_39 | Ar36_Over_Ar39 | Ar39_Moles | Age_Er |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Run_ID | Isoch_39_Over_40 | Pct_i39_Over_40_Er | Isoch_36_Over_40 | Pct_i36_Over_40_Er | Correl_36_Over_39 | Ar36_Over_Ar39 | Ar39_Moles | Age_Er | J |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |---|
 <br>
 Full raw run data downloaded from Mass Spec in CSV format should already contain these columns.
 
