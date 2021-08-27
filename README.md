@@ -20,7 +20,7 @@ Full raw run data downloaded from Mass Spec in CSV format should already contain
 
 ### Plotting an isochron diagram
 
-Import the Plotter class from _plotter.py_ then pass it a string containing the path to your correctly formatted CSV and 
+Import the Plotter class from _plotter.py_, then pass it a string containing the path to your correctly formatted CSV and 
 call the `plot()` method.
 
 ```
