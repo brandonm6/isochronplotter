@@ -47,5 +47,5 @@ plateaus found by LocatePlateaus (_locateplateaus.py_)
 1. Numpy
 2. Pandas
 
-
+---
 For questions, contact Brandon Maher at brandmaher@gmail.com
