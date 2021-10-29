@@ -48,3 +48,4 @@ plateaus found by LocatePlateaus (_locateplateaus.py_)
 2. Pandas
 
 
+For questions, contact Brandon Maher at brandmaher@gmail.com
