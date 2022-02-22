@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from variables import *
+from constants import *
 
 pd.options.mode.chained_assignment = None  # default='warn'
 pd.set_option('expand_frame_repr', False)
@@ -53,7 +53,7 @@ def check_three(df, iverbose=False):
 
 
 class LocatePlateaus:
-    def __init__(self, df, j_val, verbose=True, iverbose=False, level=0.01, start=(1 / atm_argon), stop=None):
+    def __init__(self, df, j_val, verbose=True, iverbose=False, level=0.01, start=(1 / ATM_ARGON), stop=None):
         self.verbose = verbose
         self.iverbose = iverbose  # incremental verbose - prints dataframe for every incremented trapped argon
         self.df = df
@@ -82,7 +82,7 @@ class LocatePlateaus:
         for i in incs:
             tmp = self.df[["Step"]]
             ar40star_div_ar39 = ((1 / self.df["39Ar/40Ar"]) - ((1 / i) * self.df["36Ar/39Ar"]))
-            tmp["Age"] = ((1 / total_decay_40k) * np.log((ar40star_div_ar39 * self.j_val) + 1)) / 1000000
+            tmp["Age"] = ((1 / TOTAL_DECAY_40K) * np.log((ar40star_div_ar39 * self.j_val) + 1)) / 1000000
 
             # using error for atmospheric argon since we dont have measurements to calculate the actual
             # uncertainty for each age on the incremented level of excess argon

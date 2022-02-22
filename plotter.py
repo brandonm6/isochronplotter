@@ -6,7 +6,7 @@ from matplotlib.offsetbox import AnchoredText
 import numpy as np
 import itertools
 
-from variables import *
+from constants import *
 from builddataframe import BuildDataframe
 from locateplateaus import LocatePlateaus
 from mahon import Mahon
@@ -98,7 +98,7 @@ class Plotter:
         ax.set_xlim(left=-.005, right=.09)
         ax.set_ylim(top=.0055)
 
-        ax.annotate("Air", (ax.get_xlim()[0], 1 / atm_argon), horizontalalignment='right')
+        ax.annotate("Air", (ax.get_xlim()[0], 1 / ATM_ARGON), horizontalalignment='right')
         ax.set_xlabel("$^{39}$Ar/$^{40}$Ar")
         ax.set_ylabel("$^{36}$Ar/$^{40}$Ar")
 
@@ -168,7 +168,7 @@ class Plotter:
             # convert yinterunc of 36Ar/40Ar to 40Ar/36Ar
             yinterunc = (yinterunc / yinter) * (1 / yinter)
 
-            age = (1 / total_decay_40k) * np.log(((1 / xinter) * self.j_val) + 1) / 1000000  # age in Ma
+            age = (1 / TOTAL_DECAY_40K) * np.log(((1 / xinter) * self.j_val) + 1) / 1000000  # age in Ma
             ax.plot([ax.get_xlim()[0], xinter], [yinter, 0], label=(
                     "Age = " + str(round(age, 3)) + " ± " + str(round(xinterunc, 3)) + " Ma" +
                     "\n$^{40}$Ar/$^{36}$Ar = " + str(round((1/yinter), 1)) + " ± " + f'{float(f"{yinterunc:.2g}"):g}' +
