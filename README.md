@@ -19,8 +19,9 @@ IsochronPlotter accepts CSVs formatted with the following columns:
 Full raw run data downloaded from Mass Spec in CSV format should already contain these columns.
 
 ### Plotting an isochron diagram
-
-In _run.py_, change `file_name` to the name of the appropriately formatted CSV file holding your data set.
+1. Place your appropriately formatted CSV file in the _csvs_ folder.
+2. In _run.py_, change `file_name` to the name of your CSV.
+3. Run _run.py_.
 
 ex.
 ```
