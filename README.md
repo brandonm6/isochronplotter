@@ -20,12 +20,11 @@ Full raw run data downloaded from Mass Spec in CSV format should already contain
 
 ### Plotting an isochron diagram
 
-Import the Plotter class from _plotter.py_, then pass it a string containing the path to your correctly formatted CSV and 
-call the `plot()` method.
+In _run.py_, change `file_name` to the name of the appropriately formatted CSV file holding your data set.
 
+ex.
 ```
-from plotter import Plotter
-Plotter("path_to_csv").plot()
+file_name = "CIA dense 197'.csv"
 ```
 
 PNGs of the plots are saved to `isochronplotter/outputs`.
@@ -46,6 +45,7 @@ plateaus found by LocatePlateaus (_locateplateaus.py_)
 ### Prerequisites
 1. Numpy
 2. Pandas
+3. Matplotlib
 
 ---
 For questions, contact Brandon Maher at brandmaher@gmail.com
