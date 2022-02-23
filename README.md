@@ -21,12 +21,12 @@ Full raw run data downloaded from Mass Spec in CSV format should already contain
 ### Plotting an isochron diagram
 1. Place your appropriately formatted CSV file in the _csvs_ folder.
 2. In _run.py_, change `file_name` to the name of your CSV.
-3. Run _run.py_.
 
 ex.
 ```
 file_name = "CIA dense 197'.csv"
 ```
+3. Run _run.py_.
 
 PNGs of the plots are saved to `isochronplotter/outputs`.
 
