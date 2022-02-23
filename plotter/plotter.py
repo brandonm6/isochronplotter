@@ -7,7 +7,7 @@ import numpy as np
 import itertools
 
 from constants import *
-from builddataframe import BuildDataframe
+from builddataframe.builddataframe import BuildDataframe
 from locateplateaus import LocatePlateaus
 from mahon import Mahon
 
@@ -70,7 +70,7 @@ class Plotter:
         :param verbose: prints three consecutive steps and plateaus found by locate_plateaus
         :param iverbose: prints dataframe for every incremented trapped argon along with groups of overlapping steps
         """
-        self.output_path = os.path.join(os.path.dirname(os.path.realpath("isochronplotter")), "outputs")
+        self.output_path = os.path.join(os.path.dirname(os.path.realpath("isochronplotter")), "../outputs")
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
         if omit is None:
