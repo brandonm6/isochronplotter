@@ -29,7 +29,7 @@ file_name = "CIA dense 197'.csv"
 
 PNGs of the plots are saved to `isochronplotter/outputs`.
 
-#### Other attributes of Plotter
+#### Attributes of Plotter
 
 - omit: list of letters or numbers to remove from all splits (ex. `["a", "232226-01", "1"]`)
 - save: download plots as PNGs to `isochronplotter/outputs`
@@ -37,7 +37,7 @@ PNGs of the plots are saved to `isochronplotter/outputs`.
 plateaus found by LocatePlateaus (_locateplateaus.py_)
 - iverbose: print DataFrames for each increment along with the groups of overlapping steps
 
-#### Other variables to call from Plotter
+#### Useful variables to call from Plotter
 
 - `force_remove`: list of removed run-ids that had NaN values
 - `df`: DataFrame holding the modified data
