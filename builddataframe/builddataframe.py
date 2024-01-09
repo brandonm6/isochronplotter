@@ -40,7 +40,7 @@ class BuildDataframe:
              "Pct_i36_Over_40_Er", "Correl_36_Over_39", "Ar36_Over_Ar39", "Ar39_Moles", "Age_Er"]]
 
         # drop NaN values
-        self.force_removed = list(grabbed["Run_ID"][set(np.where(grabbed.isna())[0])])
+        self.force_removed = list(grabbed["Run_ID"][list(set(np.where(grabbed.isna())[0]))])
         grabbed = grabbed.dropna().reset_index(drop=True)
 
         # convert string values to floats
@@ -71,4 +71,4 @@ class BuildDataframe:
         # updates main dataframe with cum %39Ark column
         self.main_df["cum %39Ark"] = pct_39ark
 
-        return list(id_nums)
+        return id_nums

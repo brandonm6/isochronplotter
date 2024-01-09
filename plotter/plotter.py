@@ -40,7 +40,7 @@ class Plotter:
         self.force_removed = unpacked.force_removed  # removed run ids that had NaN values
         self.j_val = unpacked.j_val
         self.df = unpacked.main_df
-        self.splits = unpacked.splits
+        self.splits = unpacked.splits  # sorted list of run id#'s
 
     def make_plots(self, name):
         ax = plt.gca()
@@ -107,8 +107,8 @@ class Plotter:
                     color = "C4"
 
                 ax.add_artist(
-                    Ellipse((df["39Ar/40Ar"].iloc[i], df["36Ar/40Ar"].iloc[i]), (x * 2), (y * 2), df["ang"].iloc[i],
-                            color=color))
+                    Ellipse(xy=(df["39Ar/40Ar"].iloc[i], df["36Ar/40Ar"].iloc[i]), width=(x * 2), height=(y * 2), 
+                            angle=df["ang"].iloc[i], color=color))
                 ax.annotate(df["Step"][i], (df["39Ar/40Ar"][i], df["36Ar/40Ar"][i]), horizontalalignment="center")
 
             # create tmp df that is readable by Mahon
